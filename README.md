@@ -16,3 +16,8 @@ new Select2({
     data,
 })
 ```
+
+### 依赖环境
+- JavaScript
+- es6
+- chrome 65+
