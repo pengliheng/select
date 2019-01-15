@@ -369,19 +369,14 @@ function Select3({
     this.dropContainer = document.createElement('div');
     this.input = document.createElement('input');
     this.inputContainer = document.createElement('div');
-    this.select = select;                                           // select 元素
-    this.width = this.select.getBoundingClientRect().width;         // select 元素宽度
-    this.level = level;                                             // 事项分类，费用名称。。。
-    this.data = data;                                               // 二级数据
+    this.select = select;
+    this.width = this.select.getBoundingClientRect().width;
+    this.level = level;
+    this.data = data;
     this.childNameList = [...childNameList,'child','children','projects'];
     this.targetNameList = [...targetNameList,'name','project_name'];
-    this.list = (new TranslateTreeIntoList({
-        data:this.data,
-        childNameList: this.childNameList,
-        targetNameList: this.targetNameList,
-    })).list;           // 转换后的扁平化的二级数据
+    this.list = (new TranslateTreeIntoList({...this})).list;           // 转换后的扁平化的二级数据
     this.init();
-    window.app = this;
 }
 
   Select3.prototype = new TranslateTreeIntoList({data:{}});
@@ -399,7 +394,7 @@ function Select3({
     const btn = document.createElement('span');
     btn.innerHTML = "✖";
     btn.id = 'clear';
-    btn.className = 'clear';
+    btn.className = 'clear hide';
     this.inputContainer.appendChild(btn);
     this.dropContainer.className = 'drop-container';
     this.input.placeholder = '键入检索';
