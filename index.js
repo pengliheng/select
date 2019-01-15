@@ -278,6 +278,7 @@ function newFunction() {
 
 
 
+///////////////////////////////////////// new select2////////////////////////////////////
 class TranslateTreeIntoList {
     constructor({
         data = {},
@@ -329,17 +330,43 @@ class TranslateTreeIntoList {
             this.list.push(path);
         };
     }
+    // 清洗数据
+    clearData(data){
+        var that = this;
+        if(data.selectIndex){
+            data.selectIndex = -1;
+        }
+        data.forEach(function(e) {
+            if(that.hasChildren(e)){
+                that.clearData(that.hasChildren(e));
+            }
+        })
+    }
+    // 基础方法，捕获节点
+    catchDom({dom,className}) {
+        if(dom == document.body){
+            // 最多冒泡到body
+            return false;
+        }else if (dom.classList.contains(className)) {
+            // 如果符合条件，返回这次冒泡捕获到的元素
+            return dom;
+        } else {
+            // 尾递归其父元素
+            return this.catchDom({dom:dom.parentElement,className});
+        }
+    };
 }
-
-// Select2 插件
-function Select2({
+  
+// Select3 插件
+function Select3({
     select,
     data = [],
     childNameList = [],
     targetNameList = [],
     level=[]
-}){
-    this.container = document.createElement('div');
+}) {
+    this.select3Container = document.createElement('div');
+    this.dropContainer = document.createElement('div');
     this.input = document.createElement('input');
     this.inputContainer = document.createElement('div');
     this.select = select;                                           // select 元素
@@ -349,24 +376,24 @@ function Select2({
     this.childNameList = [...childNameList,'child','children','projects'];
     this.targetNameList = [...targetNameList,'name','project_name'];
     this.list = (new TranslateTreeIntoList({
-        data,
+        data:this.data,
         childNameList: this.childNameList,
         targetNameList: this.targetNameList,
     })).list;           // 转换后的扁平化的二级数据
     this.init();
-    
-    window.select = this;
+    window.app = this;
 }
 
-Select2.prototype = new TranslateTreeIntoList({data:{}});
-
-Select2.prototype.init = function(){
+  Select3.prototype = new TranslateTreeIntoList({data:{}});
+  
+  Select3.prototype.init = function(){
     this.initElement();
     this.initCss();
     this.bindEvent();
-};
-Select2.prototype.initElement = function(){
+  };
+  Select3.prototype.initElement = function(){
     this.select.classList.add('hide');
+    this.select3Container.className = 'select3-container';
     this.inputContainer.className = 'form-control input-container';
     this.inputContainer.appendChild(this.input);
     const btn = document.createElement('span');
@@ -374,13 +401,13 @@ Select2.prototype.initElement = function(){
     btn.id = 'clear';
     btn.className = 'clear';
     this.inputContainer.appendChild(btn);
-    this.container.className = 'container';
-    this.input.autofocus = true;
+    this.dropContainer.className = 'drop-container';
     this.input.placeholder = '键入检索';
-    this.select.parentElement.insertBefore(this.inputContainer,this.select);
-    this.select.parentElement.insertBefore(this.container,this.select);
-}
-Select2.prototype.bindEvent = function(){
+    this.select.parentElement.insertBefore(this.select3Container,this.select);
+    this.select3Container.appendChild(this.inputContainer);
+    this.select3Container.appendChild(this.dropContainer);
+  }
+  Select3.prototype.bindEvent = function(){
     // 键入事件监听
     this.input.addEventListener('keyup',(e) => {
         if(e.target.value.length>0){
@@ -391,45 +418,24 @@ Select2.prototype.bindEvent = function(){
             this.inputContainer.querySelector('.clear').classList.add('hide');
         }
     })
-    // 点击进行级别选择
-    this.input.addEventListener('click',(e) => {
-        if(e.target.value.length == 0){
-            this.selectMatch({currentClickLevel:-1});
-        }
-    })
-    // 点击进行级别选择
+    // 点击清空按钮
     this.inputContainer.querySelector('#clear').addEventListener('click',(e) => {
+        this.clearData(this.data);
+        this.input.click();
         this.input.value = '';
-        this.input.click()
-        this.input.focus()
+        this.select.options[0] = new Option(this.input.value,this.input.value);
+        this.input.focus();
         this.inputContainer.querySelector('.clear').classList.add('hide');
     })
-    // 点击进行级别选择
-    // this.input.addEventListener('k',(e) => {
-    //     this.input.value = '';
-    //     this.input.click()
-    //     this.input.focus()
-    // })
-
     // 容器内的具体选项选择
-    this.container.addEventListener('click',(e) => {
-        const getTargetDom = ({dom,className}) =>{
-            if (dom.classList.contains(className)) {
-                return dom;
-            } else if (dom.parentElement.classList.contains(className)) {
-                return dom.parentElement;
-            } else if (dom.parentElement.parentElement.classList.contains(className)) {
-                return dom.parentElement.parentElement;
-            } else {
-                return false;
-            }
-        };
-        const isDom = getTargetDom({dom:e.target,className:'list'})
+    document.body.addEventListener('click',(e) => {
+        var isDom = this.catchDom({dom:e.target,className:'list'})
         if (isDom) {
             if (isDom.parentElement.classList.contains('global-select-container')) {
                 // 全局选择
-                this.container.innerHTML = '';
+                this.dropContainer.innerHTML = '';
                 this.input.value = isDom.title;
+                this.select.options[0] = new Option(this.input.value,this.input.value);
             } else if (isDom.parentElement.classList.contains('body')) {
                 // 为root数据模型添加属性，表示当前选择的元素
                 if(isDom.parentElement.querySelector('.active')){
@@ -442,25 +448,44 @@ Select2.prototype.bindEvent = function(){
                     currentClickLevel: isDom.parentElement.parentElement.dataset.level
                 });
                 this.input.value = this.enumerateAllList()
+                this.select.options[0] = new Option(this.input.value,this.input.value);
                 this.inputContainer.querySelector('.clear').classList.remove('hide');
                 if(!this.hasChildren(isDom.parentElement.parentElement.root[isDom.dataset.index])){
-                    this.container.innerHTML = '';
+                    this.dropContainer.innerHTML = '';
                 }
             }
+            return;
+        }
+        // 捕获select3-container节点
+        isDom = this.catchDom({dom:e.target,className:'select3-container'})
+        if(!isDom){
+            this.dropContainer.innerHTML = '';
+            return;
+        };
+        // 捕获 input-container 节点
+        isDom = this.catchDom({dom:e.target,className:'input-container'})
+        if(isDom){
+            if(isDom.querySelector('input').value == ''){
+                this.selectMatch({currentClickLevel:-1});
+            }
+            return;
         }
     })
 }
-
-Select2.prototype.enumerateAllList = function(){
-    const listDom = this.container.querySelectorAll('.active');
+  
+Select3.prototype.enumerateAllList = function(){
+    const listDom = this.dropContainer.querySelectorAll('.active');
     return Array.prototype.slice.call(listDom).map(e=>e.innerHTML).join(' > ');
 }
-
-Select2.prototype.initCss = function(){
+  
+Select3.prototype.initCss = function(){
     if(!document.querySelector('style.wdqwdwdwdw')){
         const style = document.createElement('style');
         style.className = 'wdqwdwdwdw';
         style.innerHTML = `
+            .select3-container {
+                position: relative;
+            }
             .input-container {
                 display: flex!important;
                 flex-direction: row;
@@ -479,10 +504,12 @@ Select2.prototype.initCss = function(){
                 flex: 0 0 auto;
                 user-select: none;
             }
-            .container {
+            
+            .drop-container {
                 position: absolute;
-                top: ${this.inputContainer.getBoundingClientRect().top+37}px;
-                left: ${this.inputContainer.getBoundingClientRect().left}px;
+                z-index: 10;
+                top: 37px;
+                left: 0px;
                 padding: 0;
                 width: auto;
                 overflow: hidden;
@@ -498,7 +525,7 @@ Select2.prototype.initCss = function(){
                 overflow: auto;
                 background: white;
             }
-            .container .empty {
+            .drop-container .empty {
                 height: 100%;
                 width: ${this.width}px;
                 display: flex;
@@ -508,11 +535,11 @@ Select2.prototype.initCss = function(){
                 font-size: 12px;
                 color: rgba(102, 102, 102, 1);
             }
-            .container .empty img {
+            .drop-container .empty img {
                 width: 120px;
                 margin: 12px;
             }
-            .container .list {
+            .drop-container .list {
                 color: rgba(102, 102, 102, 1);
                 padding: 0 13px;
                 height: 30px;
@@ -524,31 +551,31 @@ Select2.prototype.initCss = function(){
                 text-overflow: ellipsis;
                 overflow: hidden;
             }
-            .container .list.active {
+            .drop-container .list.active {
                 background: rgba(53, 152, 220, 0.2);
             }
-            .container .list:hover {
+            .drop-container .list:hover {
                 background: rgba(53, 152, 220, 0.2);
             }
-            .container .list .match {
+            .drop-container .list .match {
                 color: rgba(53, 152, 220, 1);
             }
-            .container .level-select-container {
+            .drop-container .level-select-container {
                 width: ${this.width/3}px;
                 height: 160px;
             }
-            .container .level-select-container + .level-select-container {
+            .drop-container .level-select-container + .level-select-container {
                 border-left: 1px solid #C2CAD8FF;
             }
-
-            .container .level-select-container .head {
+  
+            .drop-container .level-select-container .head {
                 font-size: 14px;
                 font-weight: bold;
                 padding: 0 13px;
                 line-height: 30px;
                 height: 30px;
             }
-            .container .level-select-container .body {
+            .drop-container .level-select-container .body {
                 height: calc(100% - 30px);
                 overflow: auto;
                 font-size: 12px;
@@ -557,13 +584,13 @@ Select2.prototype.initCss = function(){
         document.head.appendChild(style);
     }
 }
-
+  
 // 全局匹配 ，当输入文字的时候触发
-Select2.prototype.globalMatch = function(value){
+Select3.prototype.globalMatch = function(value){
     const filterList = this.list.filter(e=>e.match(value));
     if (filterList.length > 0) {
         const reg = new RegExp(`(${value})`);
-        this.container.innerHTML = '<div class="global-select-container">'+filterList
+        this.dropContainer.innerHTML = '<div class="global-select-container">'+filterList
             .map(e=> `
                 <div class="list detail" title="${e}">
                     ${e.replace(reg,'<span class="match">$1</span>')}
@@ -571,14 +598,14 @@ Select2.prototype.globalMatch = function(value){
             `)
             .join('')+'</div>'
     } else if (filterList.length == 0) {
-        this.container.innerHTML = `<div class="empty">
+        this.dropContainer.innerHTML = `<div class="empty">
             <img src="https://static.pipk.top/api/public/images/8731889192064048.png"/>
             <p>无结果</p>
         </div>`
     }
 }
 // 3级匹配 ，当输入文字的时候触发
-Select2.prototype.selectMatch = function({currentClickLevel}) {
+Select3.prototype.selectMatch = function({currentClickLevel}) {
     const generatContainer = ({data,head,level})=>{
         const container = document.createElement('div');
         container.className = 'level-select-container';
@@ -595,13 +622,13 @@ Select2.prototype.selectMatch = function({currentClickLevel}) {
         return container;
     };
     // 清除除了当前点击项目，之后的级别选择框
-    Array.prototype.slice.call(this.container.children).forEach((e,i)=>i>currentClickLevel?e.remove():'')
+    Array.prototype.slice.call(this.dropContainer.children).forEach((e,i)=>i>currentClickLevel?e.remove():'')
     let i = 0;
     let level = 0;
     const recursion = ({data})=>{
         if(Number(currentClickLevel) < Number(level)){
             const appendContainer = generatContainer({data,head:this.level[i++],level:level++});
-            this.container.append(appendContainer);
+            this.dropContainer.append(appendContainer);
             appendContainer.querySelector('.active')&&appendContainer.querySelector('.active').scrollIntoView();
         }else{
             generatContainer({data,head:this.level[i++],level:level++});
@@ -616,13 +643,10 @@ Select2.prototype.selectMatch = function({currentClickLevel}) {
     };
     recursion({data:this.data})
 }
+  
 
 
-// Select2.prototype
-
-
-
-new Select2({
+new Select3({
     childNameList:[],                               // 可能的子元素键盘值
     targetNameList:[],                              // 当前节点储存原俗名
     select: document.querySelector(".select2"),     // 当前select元素
