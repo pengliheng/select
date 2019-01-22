@@ -21,3 +21,11 @@ new Select2({
 - JavaScript
 - es6
 - chrome 65+
+
+
+
+### issues
+- [x] 屏幕自动上滚
+- [ ] 没选完的时候自动清空选项。。禁止选一半的东西发上去
+- [ ] 给原来的 select  赋值id
+- [ ] 备注信息

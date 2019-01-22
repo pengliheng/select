@@ -284,10 +284,12 @@ class TranslateTreeIntoList {
         data = {},
         childNameList = [],
         targetNameList = [],
+        finalKey,
     }){
         this.childNameList = childNameList;
         this.targetNameList = targetNameList;
         this.data = data;
+        this.finalKey = finalKey;
         this.list = [];
         this.initData();
     }
@@ -327,7 +329,7 @@ class TranslateTreeIntoList {
                 this.findPath({node,path:name});
             })
         } else {
-            this.list.push(path);
+            this.list.push({ name: path, id: node[this.finalKey] });
         };
     }
     // 清洗数据
@@ -357,12 +359,26 @@ class TranslateTreeIntoList {
     };
 }
   
+
+
+
+
+
+
+
+
+
+
+
+
+
 // Select3 插件
 function Select3({
     select,
     data = [],
     childNameList = [],
     targetNameList = [],
+    finalKey = 'project_id',
     level=[]
 }) {
     this.select3Container = document.createElement('div');
@@ -371,12 +387,16 @@ function Select3({
     this.inputContainer = document.createElement('div');
     this.select = select;
     this.width = this.select.getBoundingClientRect().width;
+    this.direct = document.createElement('span');
+    this.clearButton = document.createElement('span');
     this.level = level;
+    this.finalKey = finalKey;
     this.data = data;
     this.childNameList = [...childNameList,'child','children','projects'];
     this.targetNameList = [...targetNameList,'name','project_name'];
     this.list = (new TranslateTreeIntoList({...this})).list;           // 转换后的扁平化的二级数据
     this.init();
+    window.select3 = this;
 }
 
   Select3.prototype = new TranslateTreeIntoList({data:{}});
@@ -391,13 +411,19 @@ function Select3({
     this.select3Container.className = 'select3-container';
     this.inputContainer.className = 'form-control input-container';
     this.inputContainer.appendChild(this.input);
-    const btn = document.createElement('span');
-    btn.innerHTML = "✖";
-    btn.id = 'clear';
-    btn.className = 'clear hide';
-    this.inputContainer.appendChild(btn);
+
+    this.clearButton.innerHTML = "✖";
+    this.clearButton.id = 'clear';
+    this.clearButton.className = 'clear hide';
+    this.inputContainer.appendChild(this.clearButton);
+
+    this.direct.innerHTML = "▾";
+    this.direct.id = 'direct';
+    this.direct.className = 'direct';
+    this.inputContainer.appendChild(this.direct);
+    
     this.dropContainer.className = 'drop-container';
-    this.input.placeholder = '键入检索';
+    this.input.placeholder = '输入 事项分类/费用名称/科目名称/使用场景 搜索';
     this.select.parentElement.insertBefore(this.select3Container,this.select);
     this.select3Container.appendChild(this.inputContainer);
     this.select3Container.appendChild(this.dropContainer);
@@ -413,26 +439,30 @@ function Select3({
             this.inputContainer.querySelector('.clear').classList.add('hide');
         }
     })
-    // 点击清空按钮
-    this.inputContainer.querySelector('#clear').addEventListener('click',(e) => {
-        this.clearData(this.data);
-        this.input.click();
-        this.input.value = '';
-        this.select.options[0] = new Option(this.input.value,this.input.value);
-        this.input.focus();
-        this.inputContainer.querySelector('.clear').classList.add('hide');
-    })
     // 容器内的具体选项选择
     document.body.addEventListener('click',(e) => {
-        var isDom = this.catchDom({dom:e.target,className:'list'})
+        var isDom;
+        isDom = this.catchDom({dom:e.target,className:'clear'})
+        if(this.catchDom({dom:e.target,className:'clear'})){
+            this.clearData(this.data);
+            this.input.click();
+            this.input.value = '';
+            this.select.options[0] = new Option('','');
+            this.input.focus();
+            this.inputContainer.querySelector('.clear').classList.add('hide');
+            return;
+        };
+        isDom = this.catchDom({dom:e.target,className:'list'})
         if (isDom) {
             if (isDom.parentElement.classList.contains('global-select-container')) {
                 // 全局选择
                 this.dropContainer.innerHTML = '';
+                this.direct.classList.remove('up');
+                this.select3Container.classList.remove('active');
                 this.input.value = isDom.title;
-                this.select.options[0] = new Option(this.input.value,this.input.value);
+                this.select.options[0] = new Option(isDom.dataset.id,isDom.dataset.id);
             } else if (isDom.parentElement.classList.contains('body')) {
-                // 为root数据模型添加属性，表示当前选择的元素
+                // 分类选择
                 if(isDom.parentElement.querySelector('.active')){
                     isDom.parentElement.querySelector('.active').classList.remove('active');
                 };
@@ -443,18 +473,30 @@ function Select3({
                     currentClickLevel: isDom.parentElement.parentElement.dataset.level
                 });
                 this.input.value = this.enumerateAllList()
-                this.select.options[0] = new Option(this.input.value,this.input.value);
                 this.inputContainer.querySelector('.clear').classList.remove('hide');
                 if(!this.hasChildren(isDom.parentElement.parentElement.root[isDom.dataset.index])){
                     this.dropContainer.innerHTML = '';
+                    this.direct.classList.remove('up');
+                    this.select3Container.classList.remove('active');
+                    if(isDom.dataset.id){
+                        // 如果当前 点击的三级选择框 有具体的id ，那就说明这个id就是最终选择项， 给他添加到select上面
+                        // 
+                        this.select.options[0] = new Option(isDom.dataset.id,isDom.dataset.id);
+                    }
                 }
             }
             return;
         }
         // 捕获select3-container节点
         isDom = this.catchDom({dom:e.target,className:'select3-container'})
+        // 如果这个时候，你选到一半，退出了，则清空选项。。
+        if(!this.select.value) {
+            this.input.value = '';
+        }
         if(!isDom){
             this.dropContainer.innerHTML = '';
+            this.direct.classList.remove('up');
+            this.select3Container.classList.remove('active');
             return;
         };
         // 捕获 input-container 节点
@@ -486,6 +528,12 @@ Select3.prototype.initCss = function(){
                 flex-direction: row;
                 align-items: center;
                 margin-bottom: 10px;
+                box-shadow: 0 0 0 rgba(0,0,0,0.175);
+            }
+            .select3-container.active .input-container,
+            .select3-container.active .drop-container {
+                box-shadow: 0 6px 12px rgba(0,0,0,0.175)!important;
+                border-color: #93a1bb;
             }
             .input-container input {
                 outline: none;
@@ -498,9 +546,29 @@ Select3.prototype.initCss = function(){
                 cursor: pointer;
                 flex: 0 0 auto;
                 user-select: none;
+                font-weight: bolder;
+            }
+            .input-container .direct {
+                flex: 0 0 auto;
+                height: 11px;
+                transition: 0.2s all;
+                color: #999;
+                user-select: none;
+                font-size: 19px;
+                line-height: 9px;
+                transform: scaleY(0.8);
+            }
+            .input-container .direct.up {
+                transform: rotate(180deg);
             }
             
+            .input-container.active {
+                box-shadow: 0 6px 12px rgba(0,0,0,0.175);
+                border-color: #93a1bb;
+            }
+
             .drop-container {
+                box-shadow: 0 0 0 rgba(0,0,0,0.175);
                 position: absolute;
                 z-index: 10;
                 top: 37px;
@@ -575,6 +643,30 @@ Select3.prototype.initCss = function(){
                 overflow: auto;
                 font-size: 12px;
             }
+
+
+
+            
+            .select3-scroll::-webkit-scrollbar {
+                width: 6px;
+                height: 0px;
+            }
+            .select3-scroll::-webkit-scrollbar:end {
+                display: none;
+            }
+            .select3-scroll::-webkit-scrollbar-thumb {
+                background-color: rgba(194, 202, 216, 1);
+                border-radius: 4px;
+            }
+            .select3-scroll::-webkit-scrollbar-thumb:end {
+                display: none;
+            }
+            .select3-scroll::-webkit-scrollbar-track {
+              background-color: rgba(0, 0, 0, 0);
+            }
+            .select3-scroll::-webkit-scrollbar-thumb:window-inactive {
+                background-color: rgba(194, 202, 216, 1);
+            }
         `;
         document.head.appendChild(style);
     }
@@ -582,24 +674,28 @@ Select3.prototype.initCss = function(){
   
 // 全局匹配 ，当输入文字的时候触发
 Select3.prototype.globalMatch = function(value){
-    const filterList = this.list.filter(e=>e.match(value));
+    const filterList = this.list.filter(e=>e.name.match(value));
     if (filterList.length > 0) {
         const reg = new RegExp(`(${value})`);
-        this.dropContainer.innerHTML = '<div class="global-select-container">'+filterList
+        this.dropContainer.innerHTML = '<div class="select3-scroll global-select-container">'+filterList
             .map(e=> `
-                <div class="list detail" title="${e}">
-                    ${e.replace(reg,'<span class="match">$1</span>')}
+                <div class="list detail" title="${e.name}" data-id="${e.id}">
+                    ${e.name.replace(reg,'<span class="match">$1</span>')}
                 </div>
             `)
-            .join('')+'</div>'
+            .join('')+'</div>';
+        this.direct.classList.add('up');
+        this.select3Container.classList.add('active');
     } else if (filterList.length == 0) {
         this.dropContainer.innerHTML = `<div class="empty">
             <img src="https://static.pipk.top/api/public/images/8731889192064048.png"/>
             <p>无结果</p>
-        </div>`
+        </div>`;
+        this.direct.classList.add('up');
+        this.select3Container.classList.add('active');
     }
 }
-// 3级匹配 ，当输入文字的时候触发
+// 3级匹配
 Select3.prototype.selectMatch = function({currentClickLevel}) {
     const generatContainer = ({data,head,level})=>{
         const container = document.createElement('div');
@@ -607,11 +703,9 @@ Select3.prototype.selectMatch = function({currentClickLevel}) {
         container.root = data;
         container.dataset.level = level;
         container.innerHTML = `
-            <div class="head">
-                ${head}
-            </div>
-            <div class="body">
-                ${data.map((e,i)=>`<div title="${this.getNodeName(e)}" data-index="${i}" class="list ${data.selectIndex==i?'active':''}">${this.getNodeName(e)}</div>`).join('')}
+            <div class="head">${head}</div>
+            <div class="body select3-scroll">
+                ${data.map((e,i)=>`<div ${e[this.finalKey]?`data-id="${e[this.finalKey]}"`:''} title="${this.getNodeName(e)}" data-index="${i}" class="select3-scroll list ${data.selectIndex==i?'active':''}">${this.getNodeName(e)}</div>`).join('')}
             </div>
         `;
         return container;
@@ -624,7 +718,9 @@ Select3.prototype.selectMatch = function({currentClickLevel}) {
         if(Number(currentClickLevel) < Number(level)){
             const appendContainer = generatContainer({data,head:this.level[i++],level:level++});
             this.dropContainer.append(appendContainer);
-            appendContainer.querySelector('.active')&&appendContainer.querySelector('.active').scrollIntoView();
+            this.direct.classList.add('up');
+            this.select3Container.classList.add('active');
+            // appendContainer.querySelector('.active')&&appendContainer.querySelector('.active').scrollIntoView();
         }else{
             generatContainer({data,head:this.level[i++],level:level++});
         }
@@ -639,16 +735,6 @@ Select3.prototype.selectMatch = function({currentClickLevel}) {
     recursion({data:this.data})
 }
   
-
-
-new Select3({
-    childNameList:[],                               // 可能的子元素键盘值
-    targetNameList:[],                              // 当前节点储存原俗名
-    select: document.querySelector(".select2"),     // 当前select元素
-    level: ['事项分类','费用分类','费用名称'],        // 等级名称
-    data,
-})
-
 
 
 
