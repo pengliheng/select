@@ -37,25 +37,39 @@
         <input type="password" class="password form-control">
         <br/>
         二级联动: 
+        <select class="select22 form-control"></select>
+        <br/>
+        二级联动: 
         <select class="select2 form-control"></select>
         <br/>
         <button class="submit btn btn-circle blue btn-block">submit</button>
     </form>
     <script src="./index.js"></script>
     <script>
-        new Select3({
+        new select_3331({
             childNameList:[],                               // 可能的子元素键盘值
             targetNameList:[],                              // 当前节点储存原俗名
-            finalKey: 'project_id',                         // 目标属性名称
+            finalKey: 'id',                         // 目标属性名称
             select: document.querySelector(".select2"),     // 当前select元素
+            level: ['事项分类','费用分类','费用名称'],        // 等级名称
+            data:data,
+        })
+        new select_3331({
+            childNameList:[],                               // 可能的子元素键盘值
+            targetNameList:[],                              // 当前节点储存原俗名
+            finalKey: 'id',                         // 目标属性名称
+            select: document.querySelector(".select2"),     // 当前select元素
+            level: ['事项分类','费用分类','费用名称'],        // 等级名称
+            data:data,
+        })
+        new select_3331({
+            childNameList:[],                               // 可能的子元素键盘值
+            targetNameList:[],                              // 当前节点储存原俗名
+            finalKey: 'id',                         // 目标属性名称
+            select: document.querySelector(".select22"),     // 当前select元素
             level: ['事项分类','费用分类','费用名称'],        // 等级名称
             data,
         })
-        var a = "预算不足，请点击“查看预算”  \n 原因：第一季度，本次申请金额大于未用金额，请联系财务调整"
-        console.log(
-            a
-        );
-        
     </script>
 </body>
 </html>
