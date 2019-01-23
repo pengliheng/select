@@ -2651,7 +2651,7 @@ select_3331.prototype.initElement = function(){
     this.input.placeholder = '输入 事项分类/费用名称/科目名称/使用场景 搜索';
     this.select_3331Container.appendChild(this.inputContainer);
     this.select_3331Container.appendChild(this.dropContainer);
-    this.select_3331Container.appendChild(this.hoverShowDecriptContainer);
+    document.body.appendChild(this.hoverShowDecriptContainer);
     this.select.parentElement.insertBefore(this.select_3331Container,this.select);
     this.select.parentElement.insertBefore(this.descriptionElement,this.select);
   }
@@ -2739,24 +2739,46 @@ select_3331.prototype.initElement = function(){
             return;
         }
     })
+　　function getElementLeft(element){
+　　　　var actualLeft = element.offsetLeft;
+　　　　var current = element.offsetParent;
+
+　　　　while (current !== null){
+　　　　　　actualLeft += current.offsetLeft;
+　　　　　　current = current.offsetParent;
+　　　　}
+
+　　　　return actualLeft;
+　　}
+
+　　function getElementTop(element){
+　　　　var actualTop = element.offsetTop;
+　　　　var current = element.offsetParent;
+
+　　　　while (current !== null){
+　　　　　　actualTop += current.offsetTop;
+　　　　　　current = current.offsetParent;
+　　　　}
+
+　　　　return actualTop;
+　　}
+
     // 新增移入事件
     this.select_3331Container.addEventListener(
         'mousemove',
         this.throttle((e)=>{
             const el = e.target;
             if(el.dataset.description){
-                console.log(el);
-                console.log(el.getBoundingClientRect());
-                const pos  =el.getBoundingClientRect();
-                this.hoverShowDecriptContainer.style.top = pos.top;
-                this.hoverShowDecriptContainer.style.left = pos.left;
+                const listPos  =el.getBoundingClientRect();
+                this.hoverShowDecriptContainer.style.left = `${getElementLeft(el) + listPos.width/1.2 }px`;
+                this.hoverShowDecriptContainer.style.top = `${getElementTop(el) + listPos.height/2}px`;
                 this.hoverShowDecriptContainer.style.opacity = '1';
                 this.hoverShowDecriptContainer.textContent = el.dataset.description;
-            }else{
+            } else {
                 this.hoverShowDecriptContainer.textContent = '';
                 this.hoverShowDecriptContainer.style.opacity = '0';
             }
-        },100),
+        },20),
     )
 }
   
@@ -2824,6 +2846,8 @@ select_3331.prototype.initCss = function(){
             }
 
             .hover-show-decript-container {
+                transition: 0.1s all ease;
+                opacity: 0;
                 position: absolute;
                 z-index: 10;
                 background: rgba(0,0,0,0.5);
