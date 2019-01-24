@@ -2571,6 +2571,20 @@ class TranslateTreeIntoList {
           }
         }
     }
+    getElementLeftTop(element){
+　　　　 var actualLeft = element.offsetLeft;
+　　　　 var actualTop = element.offsetTop;
+　　　　 var current = element.offsetParent;
+　　　　 while (current !== null){
+　　　　　　actualTop += current.offsetTop;
+　　　　　　actualLeft += current.offsetLeft;
+　　　　　　current = current.offsetParent;
+　　　　 } 
+　　　　 return {
+            left:actualLeft,
+            top:actualTop
+        };
+　　}
 }
   
 
@@ -2688,9 +2702,11 @@ select_3331.prototype.initElement = function(){
                 this.dropContainer.innerHTML = '';
                 this.direct.classList.remove('up');
                 this.select_3331Container.classList.remove('active');
-                this.input.value = isDom.title;
+                this.input.value = isDom.textContent;
                 this.select.options[0] = new Option(isDom.dataset.id,isDom.dataset.id);
                 this.descriptionElement.textContent = `备注：${isDom.dataset.description}`;
+                this.hoverShowDecriptContainer.innerHTML = '';
+                this.hoverShowDecriptContainer.style.opacity = 0;
             } else if (isDom.parentElement.classList.contains('body')) {
                 // 分类选择
                 if(isDom.parentElement.querySelector('.active')){
@@ -2712,6 +2728,8 @@ select_3331.prototype.initElement = function(){
                         // 如果当前 点击的三级选择框 有具体的id ，那就说明这个id就是最终选择项， 给他添加到select上面
                         this.select.options[0] = new Option(isDom.dataset.id,isDom.dataset.id);
                         this.descriptionElement.textContent = `备注：${isDom.dataset.description}`;
+                        this.hoverShowDecriptContainer.innerHTML = '';
+                        this.hoverShowDecriptContainer.style.opacity = 0;
                     }
                 }
             }
@@ -2739,39 +2757,17 @@ select_3331.prototype.initElement = function(){
             return;
         }
     })
-　　function getElementLeft(element){
-　　　　var actualLeft = element.offsetLeft;
-　　　　var current = element.offsetParent;
-
-　　　　while (current !== null){
-　　　　　　actualLeft += current.offsetLeft;
-　　　　　　current = current.offsetParent;
-　　　　}
-
-　　　　return actualLeft;
-　　}
-
-　　function getElementTop(element){
-　　　　var actualTop = element.offsetTop;
-　　　　var current = element.offsetParent;
-
-　　　　while (current !== null){
-　　　　　　actualTop += current.offsetTop;
-　　　　　　current = current.offsetParent;
-　　　　}
-
-　　　　return actualTop;
-　　}
 
     // 新增移入事件
     this.select_3331Container.addEventListener(
         'mousemove',
         this.throttle((e)=>{
             const el = e.target;
-            if(el.dataset.description){
-                const listPos  =el.getBoundingClientRect();
-                this.hoverShowDecriptContainer.style.left = `${getElementLeft(el) + listPos.width/1.2 }px`;
-                this.hoverShowDecriptContainer.style.top = `${getElementTop(el) + listPos.height/2}px`;
+            if (el.dataset.description) {
+                const listPos = el.getBoundingClientRect();
+                const {left,top} = this.getElementLeftTop(el);
+                this.hoverShowDecriptContainer.style.left = `${left + listPos.width/1.2 }px`;
+                this.hoverShowDecriptContainer.style.top = `${top + listPos.height}px`;
                 this.hoverShowDecriptContainer.style.opacity = '1';
                 this.hoverShowDecriptContainer.textContent = el.dataset.description;
             } else {
@@ -2798,6 +2794,7 @@ select_3331.prototype.initCss = function(){
                 width: ${this.width}px;
                 display: inline-block;
             }
+
             .select_3331-container {
                 position: relative;
             }
@@ -2852,11 +2849,22 @@ select_3331.prototype.initCss = function(){
                 z-index: 10;
                 background: rgba(0,0,0,0.5);
                 padding: 6px;
-                border-radius: 5px;
+                border-radius: 0px 5px 5px 5px;
                 color: #fff;
                 font-size: 12px;
             }
 
+            .hover-show-decript-container:after {
+                content: '';
+                width: 0;
+                height: 0;
+                border-style: solid;
+                border-width: 0 5px 20px 0;
+                border-color: transparent rgba(0,0,0,0.5) transparent transparent;
+                position: absolute;
+                top: 0;
+                left: -5px;
+            }
             .drop-container {
                 box-shadow: 0 0 0 rgba(0,0,0,0.175);
                 position: absolute;
@@ -2968,7 +2976,7 @@ select_3331.prototype.globalMatch = function(value){
     if (filterList.length > 0) {
         const reg = new RegExp(`(${value})`);
         this.dropContainer.innerHTML = '<div class="select_3331-scroll global-select-container">'+filterList
-            .map(e=> `<div class="list detail" title="${e.name}" data-id="${e.id}" data-description="${e.description}">${e.name.replace(reg,'<span class="match">$1</span>')}</div>`)
+            .map(e=> `<div class="list detail" data-id="${e.id}" data-description="${e.description}">${e.name.replace(reg,'<span class="match">$1</span>')}</div>`)
             .join('')+'</div>';
         this.direct.classList.add('up');
         this.select_3331Container.classList.add('active');
@@ -2992,7 +3000,7 @@ select_3331.prototype.selectMatch = function({currentClickLevel}) {
             <div class="head">${head}</div>
             <div class="body select_3331-scroll">
                 ${data
-                    .map((e,i)=>`<div ${e[this.finalKey]?`data-id="${e[this.finalKey]}"`:''} title="${this.getNodeName(e)}" data-index="${i}" data-description="${e.description}" class="select_3331-scroll list ${data.selectIndex==i?'active':''}">${this.getNodeName(e)}</div>`)
+                    .map((e,i)=>`<div ${e[this.finalKey]?`data-id="${e[this.finalKey]}"`:''} data-index="${i}" data-description="${e.description}" class="select_3331-scroll list ${data.selectIndex==i?'active':''}">${this.getNodeName(e)}</div>`)
                     .join('')}
             </div>
         `;
